@@ -39,8 +39,7 @@
 
     <script type="module">
         // ----------------------------------------------------------------------------------
-        // تنبيه أمني: لا يجب نشر مفتاح API علنًا في كود العميل (الواجهة الأمامية).
-        // هذا المفتاح هنا فقط لتمكين الوظيفة التجريبية على GitHub Pages.
+        // يرجى التأكد من أن مفتاح API هذا (AIzaSyDq7zpR-PcThENMlGlhInOsrTOyIeTia9E) صالح ومفعل.
         // ----------------------------------------------------------------------------------
         const apiKey = "AIzaSyDq7zpR-PcThENMlGlhInOsrTOyIeTia9E"; // مفتاحك الجديد
         // ----------------------------------------------------------------------------------
@@ -135,8 +134,14 @@
 
         async function sendMessage() {
             
+            // **تشخيص: هل يتم تشغيل هذه الدالة؟**
+            console.log("BACIR AI: Attempting to send message..."); 
+            
             const prompt = ui.messageInput.value.trim();
-            if (prompt.length === 0) return;
+            if (prompt.length === 0) {
+                 console.warn("BACIR AI: Message input is empty after trimming. Blocking send.");
+                 return;
+            }
 
             window.displayMessage(prompt, 'user');
             ui.messageInput.value = '';
@@ -159,7 +164,8 @@
 
             } catch (error) {
                 console.error("Error calling Gemini API:", error);
-                window.displayMessage(`عذراً، حدث خطأ أثناء معالجة طلبك: ${error.message}`, 'ai', true);
+                // عرض رسالة خطأ واضحة في الواجهة
+                window.displayMessage(`عذراً، حدث خطأ أثناء معالجة طلبك. يرجى مراجعة Console (F12) لمعرفة رمز الخطأ: ${error.message}`, 'ai', true);
             } finally {
                 ui.loadingIndicator.style.display = 'none';
                 ui.messageInput.disabled = false;
@@ -296,12 +302,11 @@
                 <span class="flex items-center justify-center w-8 h-8 bg-blue-600 rounded-full text-white font-bold">ب</span>
             </div>
             
-            <button id="newChatButton" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 space-x-reverse">
-                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-                <span>دردشة جديدة</span>
+            <button id="newChatButton" class="w-full h-10 mb-6 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center text-xl" title="دردشة جديدة">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
             </button>
 
-            <div class="flex-1 mt-6 overflow-y-auto">
+            <div class="flex-1 overflow-y-auto">
                 <div class="p-2 bg-gray-800 rounded-lg text-xs text-gray-400 font-medium">
                     هذا التطبيق يعمل بدون حفظ سجل للمحادثات (Stateless). المحادثة تُحفظ في ذاكرة المتصفح فقط وتُمسح عند إغلاق أو إعادة تحميل الصفحة.
                 </div>
@@ -353,6 +358,3 @@
     </div>
 </body>
 </html>
-
-
-
