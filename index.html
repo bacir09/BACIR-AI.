@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BACIR AI - الدردشة الفورية</title>
-    <!-- تحميل Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- خطوط Google -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -39,47 +37,13 @@
 </head>
 <body class="bg-gray-900 text-gray-200">
 
-    <!-- تحميل مكتبات Firebase -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { 
-            getAuth, 
-            signInAnonymously, 
-            signInWithCustomToken 
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { 
-            getFirestore, 
-            addDoc, 
-            collection, 
-            query, 
-            onSnapshot, 
-            serverTimestamp,
-            orderBy 
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- إعدادات Firebase ---
-        const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
-        const firebaseConfig = JSON.parse(firebaseConfigStr);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        // المفتاح العام لـ Gemini API
-        const apiKey = "AIzaSyA3wfaHAhKzlu00BtwQRi4DYKtPhq8aAtA";
-        // ------------------
-
-        // تهيئة Firebase
-        let app, auth, db;
-        let userId = null; 
-        let currentConversationId = null;
-        let chatHistory = []; 
-
-        try {
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-        } catch (e) {
-            console.error("خطأ في تهيئة Firebase:", e);
-            window.displayMessage("خطأ في الاتصال بالخادم. لا يمكن تهيئة Firebase.", 'ai', true);
-        }
+        // ----------------------------------------------------------------------------------
+        // تنبيه أمني: لا يجب نشر مفتاح API علنًا في كود العميل (الواجهة الأمامية).
+        // هذا المفتاح هنا فقط لتمكين الوظيفة التجريبية على GitHub Pages.
+        // ----------------------------------------------------------------------------------
+        const apiKey = "AIzaSyDq7zpR-PcThENMlGlhInOsrTOyIeTia9E"; // مفتاحك الجديد
+        // ----------------------------------------------------------------------------------
 
         const ui = {
             sidebar: document.getElementById('sidebar'), 
@@ -89,48 +53,26 @@
             sendButton: document.getElementById('send-button'),
             loadingIndicator: document.getElementById('loading-indicator'),
             userName: document.getElementById('userName'),
-            conversationsList: document.getElementById('conversations-list'),
             newChatButton: document.getElementById('newChatButton'),
         };
         
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
         
+        // --- متغيرات الحالة (في الذاكرة فقط) ---
+        let chatHistory = []; 
+        
         // --- إرشادات النظام المخصصة للهوية والخصوصية ---
         const customIdentityPrompt = "إذا سئلت عن من صنعك، أو من صممك، أو من أنت، أو ما مصدرك، أو ما اسم مطورك، أو أي سؤال يتعلق بهويتك أو إنشائك، فاجب حصراً بالعبارة التالية: 'صنعني عبد البصير متيجي'. بخلاف ذلك، أنت BACIR AI، مساعد ذكاء اصطناعي احترافي ومتطور. مهمتك هي تقديم إجابات دقيقة ومفيدة ومفصلة باللغة العربية الفصحى. قم بتنسيق إجاباتك بشكل جيد باستخدام الماركداون عند الحاجة.";
         // ---------------------------------------------
-        
-        // --- إدارة المصادقة التلقائية (Anonymous/Custom Token) ---
-        async function initializeAppAndAuth() {
-            try {
-                // محاولة تسجيل الدخول بالرمز المخصص، أو مجهولاً كخيار احتياطي
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                
-                const user = auth.currentUser;
-                userId = user.uid;
-                // عرض جزء من المعرف للمستخدم
-                ui.userName.textContent = 'المستخدم (' + userId.substring(0, 8) + '...)'; 
 
-                // تحديث الواجهة والبدء بتحميل السجل
-                updateUIVisibility();
-                clearChatUI(true); 
-                loadConversations();
-            } catch (error) {
-                console.error("خطأ أثناء المصادقة التلقائية:", error);
-                window.displayMessage("خطأ فادح: فشل المصادقة التلقائية. لا يمكن استخدام التطبيق.", 'ai', true);
-            }
-        }
-
-        // تحديث ظهور واجهة المستخدم
-        function updateUIVisibility() {
+        // --- تهيئة الواجهة (Stateless) ---
+        function initializeChat() {
             ui.messageInput.disabled = false;
             ui.messageInput.placeholder = "اكتب رسالتك هنا...";
             window.autoResize(ui.messageInput); 
+            ui.userName.textContent = 'مستخدم تجريبي (لا يوجد تسجيل دخول)'; 
+            clearChatUI(true); 
             
-            // محاولة التركيز لضمان ظهور لوحة المفاتيح الافتراضية
             setTimeout(() => {
                 if (!ui.messageInput.disabled) {
                      ui.messageInput.focus();
@@ -151,139 +93,24 @@
              ui.menuToggle.addEventListener('click', toggleSidebar); 
         }
         
-        // --- إدارة قاعدة البيانات (Firestore) ---
-
-        // تحميل قائمة المحادثات السابقة
-        function loadConversations() {
-            if (!userId) return;
-            const convoQuery = query(
-                collection(db, 'artifacts', appId, 'users', userId, 'conversations'),
-                orderBy('createdAt', 'desc') 
-            );
-
-            onSnapshot(convoQuery, (snapshot) => {
-                ui.conversationsList.innerHTML = '';
-                if (snapshot.empty) {
-                    ui.conversationsList.innerHTML = '<p class="text-xs text-gray-500">لا يوجد محادثات سابقة.</p>';
-                    return;
-                }
-                const convos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-                convos.forEach(convo => {
-                    const a = document.createElement('a');
-                    a.href = '#';
-                    const isActive = convo.id === currentConversationId;
-                    a.className = `block text-sm p-2 rounded-lg truncate ${isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-800'}`;
-                    a.textContent = convo.title || 'محادثة بدون عنوان';
-                    a.dataset.id = convo.id;
-                    a.onclick = (e) => {
-                        e.preventDefault();
-                        if (convo.id !== currentConversationId) {
-                             loadSpecificConversation(convo.id);
-                        }
-                        toggleSidebar(); 
-                    };
-                    ui.conversationsList.appendChild(a);
-                });
-
-                // تحميل أول محادثة إذا لم تكن هناك محادثة محملة حاليًا
-                if (!currentConversationId && convos.length > 0) {
-                     loadSpecificConversation(convos[0].id);
-                }
-            }, (error) => {
-                console.error("خطأ في جلب المحادثات:", error);
-                ui.conversationsList.innerHTML = '<p class="text-xs text-red-500">خطأ في تحميل السجل.</p>';
-            });
-        }
-
-        // تحميل رسائل محادثة معينة
-        function loadSpecificConversation(convoId) {
-            if (!userId) return;
-            currentConversationId = convoId;
-            clearChatUI(false); 
-            chatHistory = []; 
-
-            // تمييز العنصر النشط
-            document.querySelectorAll('#conversations-list a').forEach(a => {
-                a.classList.remove('bg-blue-600', 'text-white');
-                a.classList.add('text-gray-300', 'hover:bg-gray-800');
-                if (a.dataset.id === convoId) {
-                    a.classList.add('bg-blue-600', 'text-white');
-                    a.classList.remove('text-gray-300', 'hover:bg-gray-800');
-                }
-            });
-
-            const messagesQuery = query(
-                collection(db, 'artifacts', appId, 'users', userId, 'conversations', convoId, 'messages'),
-                orderBy('createdAt', 'asc')
-            );
-
-            onSnapshot(messagesQuery, (snapshot) => {
-                clearChatUI(false); 
-                chatHistory = [];
-                snapshot.forEach(doc => {
-                    const msg = doc.data();
-                    // استخدام displayMessage لعرض الرسائل
-                    window.displayMessage(msg.text, msg.role);
-                    chatHistory.push({ role: msg.role, parts: [{ text: msg.text }] });
-                });
-            }, (error) => {
-                console.error("خطأ في جلب الرسائل:", error);
-                window.displayMessage("خطأ في تحميل هذه المحادثة.", 'ai', true);
-            });
-        }
-
-        // حفظ رسالة في Firestore
-        async function saveMessage(role, text, convoId) {
-            if (!userId || !convoId) return;
-            try {
-                await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'conversations', convoId, 'messages'), {
-                    role: role,
-                    text: text,
-                    createdAt: serverTimestamp()
-                });
-            } catch (error) {
-                console.error("خطأ في حفظ الرسالة:", error);
-            }
-        }
-
-        // إنشاء محادثة جديدة (أو الحصول على ID)
-        async function getOrCreateConversation(firstPrompt) {
-            if (currentConversationId) return currentConversationId;
-            if (!userId) return null;
-
-            try {
-                // إنشاء مستند محادثة جديد
-                const convoRef = await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'conversations'), {
-                    title: firstPrompt.substring(0, 40).trim() + '...', 
-                    createdAt: serverTimestamp()
-                });
-                currentConversationId = convoRef.id;
-                return currentConversationId;
-            } catch (error) {
-                console.error("خطأ في إنشاء محادثة:", error);
-                return null;
-            }
-        }
-        
         // --- منطق الدردشة ---
         function startNewChat() {
-            currentConversationId = null;
-            chatHistory = [];
+            chatHistory = []; // مسح السجل المخزن في الذاكرة
             clearChatUI(true); // مسح الواجهة مع رسالة الترحيب
-            updateUIVisibility(); // التأكد من تمكين الإدخال والتركيز
-            // إزالة التمييز عن جميع المحادثات
-            document.querySelectorAll('#conversations-list a').forEach(a => {
-                a.classList.remove('bg-blue-600', 'text-white');
-                a.classList.add('text-gray-300', 'hover:bg-gray-800');
-            });
+            updateUIVisibility(); 
             toggleSidebar(); 
         }
 
+        function updateUIVisibility() {
+            ui.messageInput.disabled = false;
+            ui.messageInput.placeholder = "اكتب رسالتك هنا...";
+            window.autoResize(ui.messageInput); 
+        }
+        
         function clearChatUI(showWelcome = true) {
             ui.chatMessages.innerHTML = '';
             if (showWelcome) {
-                window.displayMessage("مرحباً بك في BACIR AI. كيف يمكنني مساعدتك اليوم؟", 'ai');
+                window.displayMessage("مرحباً بك في BACIR AI. كيف يمكنني مساعدتك اليوم؟ (ملاحظة: السجل يُمسح عند تحديث الصفحة.)", 'ai');
             }
         }
 
@@ -307,10 +134,6 @@
         ui.sendButton.addEventListener('click', sendMessage);
 
         async function sendMessage() {
-            if (!userId) {
-                window.displayMessage("عذراً، فشل تهيئة المستخدم. حاول إعادة تحميل الصفحة.", 'ai', true);
-                return;
-            }
             
             const prompt = ui.messageInput.value.trim();
             if (prompt.length === 0) return;
@@ -320,66 +143,56 @@
             window.autoResize(ui.messageInput);
             ui.sendButton.disabled = true; 
             ui.loadingIndicator.style.display = 'block';
+            ui.messageInput.disabled = true; // تعطيل الإدخال أثناء المعالجة
 
-            const convoId = await getOrCreateConversation(prompt);
-            if (!convoId) {
-                window.displayMessage("خطأ في إنشاء أو الوصول للمحادثة.", 'ai', true);
-                ui.loadingIndicator.style.display = 'none';
-                return;
-            }
-
-            await saveMessage('user', prompt, convoId);
+            // إضافة رسالة المستخدم إلى السجل المؤقت (للحفاظ على السياق في هذا الطلب)
             chatHistory.push({ role: "user", parts: [{ text: prompt }] });
 
             try {
-                const aiResponse = await callGeminiAPI(prompt);
+                const aiResponse = await callGeminiAPI();
                 
-                await saveMessage('model', aiResponse, convoId);
+                // إضافة رد النموذج إلى السجل المؤقت
                 chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
                 
-                // العرض يتم عبر onSnapshot
+                // عرض الرد النهائي
+                window.displayMessage(aiResponse, 'model');
 
             } catch (error) {
                 console.error("Error calling Gemini API:", error);
                 window.displayMessage(`عذراً، حدث خطأ أثناء معالجة طلبك: ${error.message}`, 'ai', true);
             } finally {
                 ui.loadingIndicator.style.display = 'none';
+                ui.messageInput.disabled = false;
                 window.autoResize(ui.messageInput); 
+                ui.messageInput.focus();
             }
         }
 
         // --- دوال العرض والتعامل مع البيانات ---
         
-        // دالة عرض الرسالة: تم التعديل لدعم التصميم ثنائي الاتجاه
         function displayMessage(message, sender, isError = false) {
             const messageWrapper = document.createElement('div');
-            // User: ml-auto & justify-start (RTL: aligns to right)
-            // AI: mr-auto & justify-end (RTL: aligns to left)
             messageWrapper.className = `flex items-start w-full max-w-5xl mx-auto mb-6 ${sender === 'user' ? 'ml-auto justify-start' : 'mr-auto justify-end'}`;
 
             const icon = document.createElement('span');
-            // تحديد الحجم والمظهر الأساسي للأيقونة
             icon.className = 'flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full text-lg shadow-md';
 
             const content = document.createElement('div');
-            // تحديد حجم الفقاعة وشكلها
             content.className = 'p-3 shadow-xl max-w-xl';
 
             if (sender === 'user') {
-                // رسالة المستخدم (يمين)
                 icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>`;
-                icon.classList.add('bg-blue-600', 'text-white', 'order-2', 'mr-2'); // الأيقونة تأتي بعد المحتوى (على اليمين)
-                content.classList.add('bg-blue-600', 'text-white', 'order-1', 'rounded-xl', 'rounded-tl-none'); // المحتوى أولاً، وزاوية علوية يسار حادة
+                icon.classList.add('bg-blue-600', 'text-white', 'order-2', 'mr-2'); 
+                content.classList.add('bg-blue-600', 'text-white', 'order-1', 'rounded-xl', 'rounded-tl-none'); 
                 content.innerHTML = `<p class="font-medium">${window.escapeHTML(message)}</p>`;
                 
                 messageWrapper.appendChild(content);
                 messageWrapper.appendChild(icon);
 
             } else { 
-                // رسالة الذكاء الاصطناعي (يسار)
                 icon.innerHTML = 'ب';
-                icon.classList.add('bg-gray-700', 'text-blue-400', 'font-bold', 'order-2', 'ml-2'); // الأيقونة تأتي بعد المحتوى (على اليسار)
-                content.classList.add('bg-gray-800', 'text-gray-200', 'order-1', 'rounded-xl', 'rounded-tr-none'); // المحتوى أولاً، وزاوية علوية يمين حادة
+                icon.classList.add('bg-gray-700', 'text-blue-400', 'font-bold', 'order-2', 'ml-2'); 
+                content.classList.add('bg-gray-800', 'text-gray-200', 'order-1', 'rounded-xl', 'rounded-tr-none'); 
                 
                 let headerText = 'BACIR AI';
                 if (isError) {
@@ -418,10 +231,10 @@
             return str.replace(/[&<>"']/g, m => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'})[m]);
         }
 
-        async function callGeminiAPI(prompt) {
+        async function callGeminiAPI() {
             const payload = {
                 contents: chatHistory, 
-                systemInstruction: { parts: [{ text: customIdentityPrompt }] }, // استخدام الإرشادات المخصصة
+                systemInstruction: { parts: [{ text: customIdentityPrompt }] }, 
             };
 
             const response = await fetchWithBackoff(apiUrl, {
@@ -472,46 +285,38 @@
         window.simpleMarkdownParse = simpleMarkdownParse;
         
         // **بدء التطبيق تلقائياً**
-        initializeAppAndAuth();
+        initializeChat();
     </script>
 
-    <!-- الهيكل الرئيسي -->
     <div class="flex h-screen">
         
-        <!-- الشريط الجانبي (المتجاوب مع الجوال) -->
         <aside id="sidebar" class="fixed inset-y-0 right-0 z-50 w-64 bg-gray-950 p-4 transform transition-transform duration-300 md:relative md:translate-x-0 md:flex md:flex-col">
             <div class="flex items-center justify-between mb-6">
                 <span class="text-xl font-bold text-white">BACIR AI</span>
                 <span class="flex items-center justify-center w-8 h-8 bg-blue-600 rounded-full text-white font-bold">ب</span>
             </div>
             
-            <!-- زر دردشة جديدة (تم تحديث الأيقونة) -->
             <button id="newChatButton" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 space-x-reverse">
                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
                 <span>دردشة جديدة</span>
             </button>
 
-            <!-- منطقة سجل الدردشات -->
             <div class="flex-1 mt-6 overflow-y-auto">
-                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">السجل (حفظ تلقائي)</h3>
-                <div id="conversations-list" class="space-y-2">
-                    <p class="text-xs text-gray-500">جاري تحميل السجل...</p>
+                <div class="p-2 bg-gray-800 rounded-lg text-xs text-gray-400 font-medium">
+                    هذا التطبيق يعمل بدون حفظ سجل للمحادثات (Stateless). المحادثة تُحفظ في ذاكرة المتصفح فقط وتُمسح عند إغلاق أو إعادة تحميل الصفحة.
                 </div>
             </div>
 
-            <!-- إعدادات المستخدم (عرض معرف المستخدم فقط) -->
             <div class="mt-auto border-t border-gray-700 pt-4">
                 <div class="flex items-center space-x-3 space-x-reverse text-gray-300 p-2 rounded-lg">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    <span id="userName" class="text-sm font-medium">مستخدم مجهول</span>
+                    <span id="userName" class="text-sm font-medium">مستخدم تجريبي</span>
                 </div>
             </div>
         </aside>
 
-        <!-- منطقة المحتوى الرئيسية -->
         <main class="flex-1 flex flex-col h-screen md:mr-64">
             
-            <!-- رأس الصفحة للجوال -->
             <header class="md:hidden bg-gray-950 p-4 flex items-center justify-between border-b border-gray-800">
                 <span class="flex items-center justify-center w-8 h-8 bg-blue-600 rounded-full text-white font-bold">ب</span>
                 <span class="text-lg font-bold text-white">BACIR AI</span>
@@ -520,12 +325,9 @@
                 </button>
             </header>
 
-            <!-- منطقة الدردشة -->
             <div id="chat-messages" class="flex-1 overflow-y-auto p-4 md:p-10 space-y-4">
-                <!-- رسائل الدردشة تظهر هنا -->
-            </div>
+                </div>
 
-            <!-- منطقة الإدخال -->
             <div class="bg-gray-900 p-4 md:p-6 border-t border-gray-800">
                 <div class="max-w-3xl mx-auto w-full relative">
                     <div id="loading-indicator" class="absolute bottom-16 right-1/2 translate-x-1/2 mb-2" style="display: none;">
@@ -551,5 +353,6 @@
     </div>
 </body>
 </html>
+
 
 
